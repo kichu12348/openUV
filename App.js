@@ -13,10 +13,11 @@ import {
   Keyboard,
   Animated,
   useColorScheme,
+  ImageBackground,
 } from "react-native";
 
-import backgroundIMGL from "./Images/bgIMG.jpg";
-import backgroundIMGD from "./Images/bgIMGD.jpg";
+import backgroundIMGL from "./Images/bgIMGnew.png";
+import backgroundIMGD from "./Images/bgIMGD.png";
 import searchL from "./Images/search.png";
 import searchD from "./Images/searchD.png";
 import axios from "axios";
@@ -27,7 +28,6 @@ export default function App() {
   const [bgImg, setBgImg] = useState(backgroundIMGD);
   const [searchImg, setSearchImg] = useState(searchD);
   const [shadowColor, setShadowColor] = useState("white");
-  const bgImgOpacity = useState(new Animated.Value(1))[0];
   const [location, setLocation] = useState("");
   const [risk, setRisk] = useState("0%");
   const [uv, setUv] = useState("0");
@@ -36,6 +36,8 @@ export default function App() {
   const [adress, setAdress] = useState("");
   const [safe, setSafe] = useState("");
   const [visible, setVisible] = useState("none");
+  const [safeAreaBg, setSafeAreaBg] = useState("black");
+  const cardOpacity = useState(new Animated.Value(0))[0];
 
   const colorScheme = useColorScheme();
 
@@ -46,23 +48,18 @@ export default function App() {
   const changeTheme = (colorScheme) => {
     const toLightMode = colorScheme === "light";
 
-    Animated.parallel([
-      Animated.timing(bgImgOpacity, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: false,
-      }),
-    ]).start(() => {
-      setBgImg(toLightMode ? backgroundIMGL : backgroundIMGD);
-      setTextClr(toLightMode ? "black" : "white");
-
-      setBgClr(toLightMode ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)");
-      setSearchImg(toLightMode ? searchL : searchD);
-      setShadowColor(toLightMode ? "black" : "white");
-    });
+    setBgImg(toLightMode ? backgroundIMGL : backgroundIMGD);
+    setSafeAreaBg(toLightMode ? "white" : "black");
+    setTextClr(toLightMode ? "black" : "white");
+    setBgClr(toLightMode ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)");
+    setSearchImg(toLightMode ? searchL : searchD);
+    setShadowColor(toLightMode ? "black" : "white");
   };
 
   const fetchData = async () => {
+    if (location === "" || location.length < 3) {
+      return;
+    }
     try {
       const APIkey = "7e9112dfaada39cf58c77ebb5a9525ee";
       const Api = `http://api.openweathermap.org/geo/1.0/direct?q=${location}&limit=5&appid=${APIkey}`;
@@ -73,7 +70,7 @@ export default function App() {
       const lon = response.data[0].lon;
 
       const myHeaders = new Headers();
-      myHeaders.append("x-access-token", "openuv-1cs4ds2rltvahk0h-io");
+      myHeaders.append("x-access-token", "openuv-1cs4ds2rltvwv0o1-io");
       myHeaders.append("Content-Type", "application/json");
 
       const requestOptions = {
@@ -86,8 +83,9 @@ export default function App() {
         `https://api.openuv.io/api/v1/uv?lat=${lat}.5&lng=${lon}.11&alt=100&dt=`,
         requestOptions
       ).then((response) => response.json());
-      const rick = ((uvResp.result.uv * 100) / 11).toString();
-      setRisk(rick > "94.4" ? "94.4%" : rick + "%");
+      
+      const rick = (uvResp.result.uv * 100) / 11
+      setRisk(rick > 94.4 ? '94.4%' : rick.toString() + '%');
       setAdress(response.data[0].name);
       setUv(uvResp.result.uv);
       setUvMax(uvResp.result.uv_max);
@@ -107,21 +105,31 @@ export default function App() {
           : "Very High ☠️";
       setSafe(safe);
       setVisible("flex");
-    } catch {
+
+      // Animate the card when new data is fetched
+      Animated.timing(cardOpacity, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }).start();
+    } catch(e) {
       alert("Invalid Location");
       setVisible("none");
+      cardOpacity.setValue(0); // Reset the card opacity when an error occurs
     }
   };
 
+
   const card = () => {
     return (
-      <View
+      <Animated.View
         style={{
           width: "100%",
           height: "100%",
           justifyContent: "flex-start",
           alignItems: "center",
           display: visible,
+          opacity: cardOpacity,
         }}
       >
         <Text style={[styles.fontStyles, { color: textClr, marginTop: 20 }]}>
@@ -176,40 +184,44 @@ export default function App() {
             {safe}
           </Text>
         </View>
-      </View>
+      </Animated.View>
     );
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: bgClr }]}>
-      <Animated.Image
+    <SafeAreaView style={[styles.container, { backgroundColor: safeAreaBg }]}>
+      <ImageBackground
+        style={{
+          height: "100%",
+          width: "100%",
+        }}
         source={bgImg}
-        style={[styles.image, { opacity: bgImgOpacity }]}
         resizeMode="cover"
-      />
-      <TouchableWithoutFeedback
-        onPress={() => Keyboard.dismiss()}
-        style={{ width: "100%", height: "100%" }}
       >
-        <SafeAreaView style={[styles.safeArea, { backgroundColor: bgClr }]}>
-          <View style={[styles.searchBar]}>
-            <TextInput
-              style={[styles.input, { color: textClr }]}
-              placeholder="Search"
-              placeholderTextColor={textClr}
-              value={location}
-              onChangeText={(text) => setLocation(text)}
-              onSubmitEditing={fetchData}
-            />
-            <TouchableOpacity onPress={fetchData} style={styles.searchBtn}>
-              <Image source={searchImg} style={{ width: 40, height: 40 }} />
-            </TouchableOpacity>
-          </View>
-          {card()}
-        </SafeAreaView>
-      </TouchableWithoutFeedback>
-      <StatusBar style="auto" />
-    </View>
+        <TouchableWithoutFeedback
+          onPress={() => Keyboard.dismiss()}
+          style={{ width: "100%", height: "100%" }}
+        >
+          <SafeAreaView style={[styles.safeArea, { backgroundColor: bgClr }]}>
+            <View style={[styles.searchBar]}>
+              <TextInput
+                style={[styles.input, { color: textClr }]}
+                placeholder="Search"
+                placeholderTextColor={textClr}
+                value={location}
+                onChangeText={(text) => setLocation(text)}
+                onSubmitEditing={fetchData}
+              />
+              <TouchableOpacity onPress={fetchData} style={styles.searchBtn}>
+                <Image source={searchImg} style={{ width: 40, height: 40 }} />
+              </TouchableOpacity>
+            </View>
+            {card()}
+          </SafeAreaView>
+        </TouchableWithoutFeedback>
+        <StatusBar style="auto" />
+      </ImageBackground>
+    </SafeAreaView>
   );
 }
 
