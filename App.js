@@ -66,23 +66,24 @@ export default function App() {
       const response = await axios.get(Api);
       setLocation("");
 
-      const lat = response.data[0].lat;
-      const lon = response.data[0].lon;
+      const lat = response.data.find(e=>e.lat !== null).lat;
+      const lon = response.data.find(e=>e.lon !== null).lon;
 
-      const myHeaders = new Headers();
-      myHeaders.append("x-access-token", "openuv-1cs4ds2rltvwv0o1-io");
-      myHeaders.append("Content-Type", "application/json");
+    const uvResp =  await axios.get(`https://api.openuv.io/api/v1/uv?lat=${lat}.5&lng=${lon}.11&alt=100&dt=`, {
+        headers: {
+          'x-access-token': 'openuv-1cs4ds2rltvwv0o1-io',
+          'Content-Type': 'application/json'
+        },
+        redirect: 'follow'
+      
+      }).then(
+        response => response.data
+      ).
+      catch((error) => {
+        console.log(error);
+      });
 
-      const requestOptions = {
-        method: "GET",
-        headers: myHeaders,
-        redirect: "follow",
-      };
-
-      const uvResp = await fetch(
-        `https://api.openuv.io/api/v1/uv?lat=${lat}.5&lng=${lon}.11&alt=100&dt=`,
-        requestOptions
-      ).then((response) => response.json());
+      
       
       const rick = (uvResp.result.uv * 100) / 11
       setRisk(rick > 94.4 ? '94.4%' : rick.toString() + '%');
@@ -192,7 +193,7 @@ export default function App() {
     <SafeAreaView style={[styles.container, { backgroundColor: safeAreaBg }]}>
       <ImageBackground
         style={{
-          height: "100%",
+          height: "80%",
           width: "100%",
         }}
         source={bgImg}
@@ -228,9 +229,11 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: "center",
+    alignItems: "flex-end",
     justifyContent: "center",
     position: "relative",
+    height: "100%",
+    width: "100%",
   },
   image: {
     position: "absolute",
